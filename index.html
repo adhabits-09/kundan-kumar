@@ -568,13 +568,14 @@
         if(e.key==='Escape'){ closePPNew(); }
     });
 
-    // FORM POPUP LOGIC
+    // FORM POPUP LOGIC WITH GOOGLE SHEETS
     const formBackdrop = document.getElementById('formBackdrop');
     const formContainer = document.getElementById('formContainer');
     const mainForm = document.getElementById('mainForm');
     const sourceInfo = document.getElementById('sourceInfo');
     const closeFormBtn = document.getElementById('closeFormBtn');
 
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybzf_qGmqz4-u-KfFe9LlW_bukkaNV3sX0pW_yOl43wYsGfePJBfsTwZ01S_wgh7PS/exec";
     const WA_NUMBER_INT = "917836819515";
 
     function openForm(source = 'site'){
@@ -601,6 +602,7 @@
         });
     });
 
+    // Form submission - FIXED: Using URLSearchParams instead of FormData for better compatibility
     mainForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -615,13 +617,42 @@
             return;
         }
 
+        // FIXED: Using URLSearchParams for better Google Apps Script compatibility
+        const params = new URLSearchParams();
+        params.append('name', name);
+        params.append('phone', phone);
+        params.append('age', age);
+        params.append('gender', gender);
+        params.append('profession', profession);
+        params.append('source', sourceInfo.value || 'Website');
+        params.append('timestamp', new Date().toISOString());
+
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: params.toString(),
+            mode: 'no-cors'
+        }).catch(() => {});
+
         // Track Contact event
         if (typeof fbq !== 'undefined') {
             fbq('track', 'Contact');
         }
 
         // Open WhatsApp with pre-filled message
-        const msg = encodeURIComponent(`Hello Sir,\n\nI am interested in your program. Here are my details:\n\nName: ${name}\nPhone: ${phone}\nAge: ${age}\nGender: ${gender}\nProfession: ${profession}\n\nPlease share next steps. Thank you!`);
+        const msg = encodeURIComponent(`Hello Sir,
+
+I am interested in your program. Here are my details:
+
+Name: ${name}
+Phone: ${phone}
+Age: ${age}
+Gender: ${gender}
+Profession: ${profession}
+
+Please share next steps. Thank you!`);
 
         window.open(`https://wa.me/${WA_NUMBER_INT}?text=${msg}`, '_blank');
 
