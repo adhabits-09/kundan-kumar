@@ -578,6 +578,9 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybzf_qGmqz4-u-KfFe9LlW_bukkaNV3sX0pW_yOl43wYsGfePJBfsTwZ01S_wgh7PS/exec";
     const WA_NUMBER_INT = "917836819515";
 
+    // FLAG to prevent double tracking
+    let isSubmitting = false;
+
     function openForm(source = 'site'){
         sourceInfo.value = source;
         formBackdrop.classList.add('show');
@@ -602,9 +605,13 @@
         });
     });
 
-    // Form submission - FIXED: Using URLSearchParams instead of FormData for better compatibility
+    // Form submission - FIXED: Prevent double submission & double tracking
     mainForm.addEventListener('submit', (e) => {
         e.preventDefault();
+
+        // PREVENT DOUBLE SUBMISSION
+        if (isSubmitting) return;
+        isSubmitting = true;
 
         const name = document.getElementById('inp_name').value.trim();
         const phone = document.getElementById('inp_phone').value.replace(/\D/g,'');
@@ -614,10 +621,11 @@
 
         if (!name || phone.length < 6 || !age || !gender || !profession) {
             alert('Please fill all fields correctly.');
+            isSubmitting = false;
             return;
         }
 
-        // FIXED: Using URLSearchParams for better Google Apps Script compatibility
+        // Using URLSearchParams for better Google Apps Script compatibility
         const params = new URLSearchParams();
         params.append('name', name);
         params.append('phone', phone);
@@ -636,7 +644,7 @@
             mode: 'no-cors'
         }).catch(() => {});
 
-        // Track Contact event
+        // Track Contact event ONLY ONCE
         if (typeof fbq !== 'undefined') {
             fbq('track', 'Contact');
         }
@@ -657,6 +665,9 @@ Please share next steps. Thank you!`);
         window.open(`https://wa.me/${WA_NUMBER_INT}?text=${msg}`, '_blank');
 
         closeForm();
+
+        // Reset flag after delay
+        setTimeout(() => { isSubmitting = false; }, 3000);
     });
 
     document.addEventListener('keydown', (e) => {
