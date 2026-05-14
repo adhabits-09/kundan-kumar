@@ -195,6 +195,7 @@
         }
     </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body class="text-dark">
 
@@ -525,6 +526,10 @@
 <script>
     lucide.createIcons();
 
+    // ========== GLOBAL FLAGS (prevent double tracking) ==========
+    let contactTracked = false;   // Ye flag ensure karega Contact sirf 1 baar fire ho
+    let isSubmitting = false;     // Form double submit rokne ke liye
+
     // Counter animation
     const counters=document.querySelectorAll('.counter');
     const counterObserver=new IntersectionObserver((entries)=>{
@@ -578,9 +583,6 @@
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybzf_qGmqz4-u-KfFe9LlW_bukkaNV3sX0pW_yOl43wYsGfePJBfsTwZ01S_wgh7PS/exec";
     const WA_NUMBER_INT = "917836819515";
 
-    // FLAG to prevent double tracking
-    let isSubmitting = false;
-
     function openForm(source = 'site'){
         sourceInfo.value = source;
         formBackdrop.classList.add('show');
@@ -598,10 +600,13 @@
     formBackdrop.addEventListener('click', closeForm);
     closeFormBtn.addEventListener('click', closeForm);
 
+    // Attach click listeners to open-form buttons (clone to prevent duplication)
     document.querySelectorAll('.open-form').forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            openForm(btn.getAttribute('data-source') || 'Website');
+            openForm(newBtn.getAttribute('data-source') || 'Website');
         });
     });
 
@@ -644,9 +649,11 @@
             mode: 'no-cors'
         }).catch(() => {});
 
-        // Track Contact event ONLY ONCE
-        if (typeof fbq !== 'undefined') {
+        // ========== FIXED: Contact event ONLY ONCE per page lifecycle ==========
+        if (typeof fbq !== 'undefined' && !contactTracked) {
             fbq('track', 'Contact');
+            contactTracked = true;  // Flag true kar do — ab dubara nahi fire hoga
+            console.log('Contact event fired once');
         }
 
         // Open WhatsApp with pre-filled message
@@ -666,7 +673,7 @@ Please share next steps. Thank you!`);
 
         closeForm();
 
-        // Reset flag after delay
+        // Reset isSubmitting after delay (agar user dubara form khole)
         setTimeout(() => { isSubmitting = false; }, 3000);
     });
 
