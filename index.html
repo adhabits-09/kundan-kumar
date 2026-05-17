@@ -194,8 +194,6 @@
             h2.display-5{font-size:1.5rem;}
         }
     </style>
-<base target="_blank">
-<base target="_blank">
 </head>
 <body class="text-dark">
 
@@ -224,7 +222,7 @@
                         <label class="form-label d-flex align-items-center gap-2 fw-bold">
                             <i data-lucide="phone" style="width:16px"></i> Phone *
                         </label>
-                        <input id="inp_phone" type="tel" class="form-control" required placeholder="10-digit number" maxlength="10">
+                        <input id="inp_phone" type="tel" class="form-control" required placeholder="10-digit number" maxlength="10" pattern="[0-9]{10}">
                     </div>
                     <div class="col-6">
                         <label class="form-label d-flex align-items-center gap-2 fw-bold">
@@ -451,7 +449,7 @@
                     <h3 class="fw-bold fs-3 mb-2">🔥 Now it's YOUR time</h3>
                     <div class="row text-center">
                         <div class="col-6">
-                            <h4 class="fw-bold fs-2 mb-0">₹<span class="counter" data-target="500000" data-suffix="+">0</span></h4>
+                            <h4 class="fw-bold fs-2 mb-0">₹<<span class="counter" data-target="500000" data-suffix="+">0</span></h4>
                             <p class="small opacity-75 mb-0">Earned by Students</p>
                         </div>
                         <div class="col-6">
@@ -527,8 +525,8 @@
     lucide.createIcons();
 
     // ========== GLOBAL FLAGS (prevent double tracking) ==========
-    let contactTracked = false;   // Ye flag ensure karega Contact sirf 1 baar fire ho
-    let isSubmitting = false;     // Form double submit rokne ke liye
+    let contactTracked = false;
+    let isSubmitting = false;
 
     // Counter animation
     const counters=document.querySelectorAll('.counter');
@@ -610,7 +608,7 @@
         });
     });
 
-    // Form submission - FIXED: Prevent double submission & double tracking
+    // ========== FIXED FORM SUBMISSION ==========
     mainForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -624,8 +622,9 @@
         const gender = document.getElementById('inp_gender').value;
         const profession = document.getElementById('inp_profession').value;
 
-        if (!name || phone.length < 6 || !age || !gender || !profession) {
-            alert('Please fill all fields correctly.');
+        // Phone validation exact 10 digit for India
+        if (!name || phone.length !== 10 || !age || !gender || !profession) {
+            alert('Please fill all fields correctly. Phone must be 10 digits.');
             isSubmitting = false;
             return;
         }
@@ -640,6 +639,7 @@
         params.append('source', sourceInfo.value || 'Website');
         params.append('timestamp', new Date().toISOString());
 
+        // Send to Google Sheets
         fetch(SCRIPT_URL, {
             method: 'POST',
             headers: {
@@ -647,12 +647,16 @@
             },
             body: params.toString(),
             mode: 'no-cors'
-        }).catch(() => {});
+        }).then(() => {
+            console.log('Data sent to Google Sheets');
+        }).catch((err) => {
+            console.error('Sheet error:', err);
+        });
 
-        // ========== FIXED: Contact event ONLY ONCE per page lifecycle ==========
+        // ========== Contact event ONLY ONCE per page lifecycle ==========
         if (typeof fbq !== 'undefined' && !contactTracked) {
             fbq('track', 'Contact');
-            contactTracked = true;  // Flag true kar do — ab dubara nahi fire hoga
+            contactTracked = true;
             console.log('Contact event fired once');
         }
 
@@ -673,7 +677,7 @@ Please share next steps. Thank you!`);
 
         closeForm();
 
-        // Reset isSubmitting after delay (agar user dubara form khole)
+        // Reset isSubmitting after delay
         setTimeout(() => { isSubmitting = false; }, 3000);
     });
 
