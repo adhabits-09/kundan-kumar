@@ -185,6 +185,13 @@
         .section-title{color:var(--black);font-weight:800;}
         .sky-text{color:var(--sky-dark);font-weight:700;}
 
+        /* Thank you overlay */
+        .thank-you-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:10002;display:none;align-items:center;justify-content:center;flex-direction:column;color:var(--white);text-align:center;padding:2rem;}
+        .thank-you-overlay.show{display:flex;}
+        .thank-you-overlay h2{color:var(--sky);font-size:2.5rem;font-weight:800;margin-bottom:1rem;}
+        .thank-you-overlay p{font-size:1.2rem;margin-bottom:2rem;}
+        .thank-you-overlay .wa-btn{font-size:1.1rem;padding:.8rem 2rem;}
+
         @media(max-width:768px){
             section{padding:40px 0;}
             .hero-section{padding:50px 0 30px;}
@@ -222,7 +229,7 @@
                         <label class="form-label d-flex align-items-center gap-2 fw-bold">
                             <i data-lucide="phone" style="width:16px"></i> Phone *
                         </label>
-                        <input id="inp_phone" type="tel" class="form-control" required placeholder="10-digit number" maxlength="10" pattern="[0-9]{10}">
+                        <input id="inp_phone" type="tel" class="form-control" required placeholder="10-digit number" maxlength="10">
                     </div>
                     <div class="col-6">
                         <label class="form-label d-flex align-items-center gap-2 fw-bold">
@@ -262,6 +269,16 @@
             </form>
         </div>
     </div>
+</div>
+
+<!-- Thank You Overlay -->
+<div class="thank-you-overlay" id="thankYouOverlay">
+    <h2>🎉 Thank You!</h2>
+    <p>Your details have been saved. Click below to connect on WhatsApp.</p>
+    <a id="waRedirectBtn" href="#" class="wa-btn glow-pulse">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        Open WhatsApp
+    </a>
 </div>
 
 <!-- Privacy Modal -->
@@ -449,7 +466,7 @@
                     <h3 class="fw-bold fs-3 mb-2">🔥 Now it's YOUR time</h3>
                     <div class="row text-center">
                         <div class="col-6">
-                            <h4 class="fw-bold fs-2 mb-0">₹<<span class="counter" data-target="500000" data-suffix="+">0</span></h4>
+                            <h4 class="fw-bold fs-2 mb-0">₹<span class="counter" data-target="500000" data-suffix="+">0</span></h4>
                             <p class="small opacity-75 mb-0">Earned by Students</p>
                         </div>
                         <div class="col-6">
@@ -524,8 +541,7 @@
 <script>
     lucide.createIcons();
 
-    // ========== GLOBAL FLAGS (prevent double tracking) ==========
-    let contactTracked = false;
+    // ========== GLOBAL FLAGS ==========
     let isSubmitting = false;
 
     // Counter animation
@@ -571,12 +587,14 @@
         if(e.key==='Escape'){ closePPNew(); }
     });
 
-    // FORM POPUP LOGIC WITH GOOGLE SHEETS
+    // FORM POPUP LOGIC
     const formBackdrop = document.getElementById('formBackdrop');
     const formContainer = document.getElementById('formContainer');
     const mainForm = document.getElementById('mainForm');
     const sourceInfo = document.getElementById('sourceInfo');
     const closeFormBtn = document.getElementById('closeFormBtn');
+    const thankYouOverlay = document.getElementById('thankYouOverlay');
+    const waRedirectBtn = document.getElementById('waRedirectBtn');
 
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybzf_qGmqz4-u-KfFe9LlW_bukkaNV3sX0pW_yOl43wYsGfePJBfsTwZ01S_wgh7PS/exec";
     const WA_NUMBER_INT = "917836819515";
@@ -595,24 +613,28 @@
         setTimeout(() => mainForm.reset(), 300);
     }
 
+    function showThankYou(waUrl) {
+        thankYouOverlay.classList.add('show');
+        waRedirectBtn.href = waUrl;
+        document.body.style.overflow = 'hidden';
+    }
+
     formBackdrop.addEventListener('click', closeForm);
     closeFormBtn.addEventListener('click', closeForm);
 
-    // Attach click listeners to open-form buttons (clone to prevent duplication)
-    document.querySelectorAll('.open-form').forEach(btn => {
-        const newBtn = btn.cloneNode(true);
-        btn.parentNode.replaceChild(newBtn, btn);
-        newBtn.addEventListener('click', (e) => {
+    // Event delegation for open-form buttons (Eshita style - no cloneNode)
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.open-form');
+        if (trigger && !trigger.closest('#formContainer')) {
             e.preventDefault();
-            openForm(newBtn.getAttribute('data-source') || 'Website');
-        });
+            openForm(trigger.getAttribute('data-source') || 'Website');
+        }
     });
 
-    // ========== FIXED FORM SUBMISSION ==========
+    // ========== FIXED FORM SUBMISSION (Eshita Style) ==========
     mainForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        // PREVENT DOUBLE SUBMISSION
         if (isSubmitting) return;
         isSubmitting = true;
 
@@ -622,45 +644,55 @@
         const gender = document.getElementById('inp_gender').value;
         const profession = document.getElementById('inp_profession').value;
 
-        // Phone validation exact 10 digit for India
-        if (!name || phone.length !== 10 || !age || !gender || !profession) {
-            alert('Please fill all fields correctly. Phone must be 10 digits.');
+        // Strong phone validation - Indian format
+        const phoneRegex = /^[6-9]\d{9}$/;
+        if (!name || !phoneRegex.test(phone) || !age || !gender || !profession) {
+            alert('Please fill all fields correctly.\nPhone must be a valid 10-digit Indian number.');
             isSubmitting = false;
             return;
         }
 
-        // Using URLSearchParams for better Google Apps Script compatibility
-        const params = new URLSearchParams();
-        params.append('name', name);
-        params.append('phone', phone);
-        params.append('age', age);
-        params.append('gender', gender);
-        params.append('profession', profession);
-        params.append('source', sourceInfo.value || 'Website');
-        params.append('timestamp', new Date().toISOString());
+        // Check duplicate phone (24 hour block)
+        const lastSubmit = localStorage.getItem('kundan_lead_' + phone);
+        const now = Date.now();
+        if (lastSubmit && (now - parseInt(lastSubmit)) < 24 * 60 * 60 * 1000) {
+            alert('This number was already submitted recently. Please wait 24 hours or use a different number.');
+            isSubmitting = false;
+            return;
+        }
+
+        // Using FormData like Eshita (better Google Script compatibility)
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('phone', phone);
+        formData.append('age', age);
+        formData.append('gender', gender);
+        formData.append('profession', profession);
+        formData.append('source', sourceInfo.value || 'Website');
+        formData.append('timestamp', new Date().toISOString());
 
         // Send to Google Sheets
         fetch(SCRIPT_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: params.toString(),
+            body: formData,
             mode: 'no-cors'
-        }).then(() => {
-            console.log('Data sent to Google Sheets');
-        }).catch((err) => {
-            console.error('Sheet error:', err);
-        });
+        }).catch(() => {});
 
-        // ========== Contact event ONLY ONCE per page lifecycle ==========
-        if (typeof fbq !== 'undefined' && !contactTracked) {
+        // ========== Meta Pixel: Lead + Contact (Eshita Style) ==========
+        if (typeof fbq !== 'undefined') {
+            fbq('track', 'Lead', { 
+                content_name: 'WhatsApp Form', 
+                content_source: sourceInfo.value || 'Website',
+                value: 0.00,
+                currency: 'INR'
+            });
             fbq('track', 'Contact');
-            contactTracked = true;
-            console.log('Contact event fired once');
         }
 
-        // Open WhatsApp with pre-filled message
+        // Save to localStorage (duplicate prevention)
+        localStorage.setItem('kundan_lead_' + phone, now.toString());
+
+        // Build WhatsApp message
         const msg = encodeURIComponent(`Hello Sir,
 
 I am interested in your program. Here are my details:
@@ -673,16 +705,23 @@ Profession: ${profession}
 
 Please share next steps. Thank you!`);
 
-        window.open(`https://wa.me/${WA_NUMBER_INT}?text=${msg}`, '_blank');
+        const waUrl = `https://wa.me/${WA_NUMBER_INT}?text=${msg}`;
 
         closeForm();
 
-        // Reset isSubmitting after delay
+        // Show thank you overlay instead of direct redirect (better UX)
+        showThankYou(waUrl);
+
+        // Reset flag
         setTimeout(() => { isSubmitting = false; }, 3000);
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeForm();
+        if (e.key === 'Escape') { 
+            closeForm(); 
+            thankYouOverlay.classList.remove('show');
+            document.body.style.overflow = '';
+        }
     });
 </script>
 </body>
